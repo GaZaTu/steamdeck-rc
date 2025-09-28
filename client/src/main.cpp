@@ -1,3 +1,4 @@
+#include "gamepad/hook.hpp"
 #include "serialib.h"
 #include <chrono>
 #include <cstdio>
@@ -25,32 +26,32 @@ int main(int argc, char** argv) {
   );
 
 
-    auto gpad = gamepad::hook::make();
-    gpad->set_plug_and_play(true, std::chrono::milliseconds(10000));
+  auto gpad = gamepad::hook::make(gamepad::hook_type::XINPUT);
+  gpad->set_plug_and_play(true, std::chrono::milliseconds(10000));
 
-    std::atomic<bool> run_flag = true;
+  std::atomic<bool> run_flag = true;
 
-    gpad->set_button_event_handler([&](std::shared_ptr<gamepad::device> pad) {
-      ginfo("Received button event: Native id: %i, Virtual id: %i val: %i", pad->last_button_event()->native_id, pad->last_button_event()->vc, pad->last_button_event()->value);
+  gpad->set_button_event_handler([&](std::shared_ptr<gamepad::device> pad) {
+    ginfo("Received button event: Native id: %i, Virtual id: %i val: %i", pad->last_button_event()->native_id, pad->last_button_event()->vc, pad->last_button_event()->value);
 
-      if (pad->is_button_pressed(gamepad::button::Y)) {
-        printf("Y is pressed, exiting\n");
-        run_flag = false;
-      }
-    });
-
-    gpad->set_axis_event_handler([&](std::shared_ptr<gamepad::device> pad) {
-      ginfo("Received axis event: Native id: %i, Virtual id: %i val: %i", pad->last_axis_event()->native_id, pad->last_axis_event()->vc, pad->last_axis_event()->value);
-    });
-
-    if (!gpad->start()) {
-      printf("Failed to start hook\n");
-      return 1;
+    if (pad->is_button_pressed(gamepad::button::Y)) {
+      printf("Y is pressed, exiting\n");
+      run_flag = false;
     }
+  });
 
-    while (run_flag) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
+  gpad->set_axis_event_handler([&](std::shared_ptr<gamepad::device> pad) {
+    ginfo("Received axis event: Native id: %i, Virtual id: %i val: %i", pad->last_axis_event()->native_id, pad->last_axis_event()->vc, pad->last_axis_event()->value);
+  });
+
+  if (!gpad->start()) {
+    printf("Failed to start hook\n");
+    return 1;
+  }
+
+  while (run_flag) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
 
   // serial.writeString("test\n");
 
