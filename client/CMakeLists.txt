@@ -17,16 +17,15 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 
-add_subdirectory(libgamepad)
+add_subdirectory("${PROJECT_SOURCE_DIR}/../libgamepad" gamepad)
 
 include_directories(
   ${PROJECT_SOURCE_DIR}/src
   ${PROJECT_SOURCE_DIR}/include
-  ${PROJECT_SOURCE_DIR}/libgamepad/include
 )
 
 file(GLOB SRC_FILES
-  src/*.cpp
+  ${PROJECT_SOURCE_DIR}/src/*.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
