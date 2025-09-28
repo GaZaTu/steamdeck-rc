@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
   );
 
 
-  auto gpad = gamepad::hook::make(gamepad::hook_type::XINPUT);
+  auto gpad = gamepad::hook::make(gamepad::hook_type::DIRECT_INPUT);
   gpad->set_plug_and_play(true, std::chrono::milliseconds(10000));
 
   std::atomic<bool> run_flag = true;
