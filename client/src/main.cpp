@@ -74,8 +74,7 @@ bool openFirstGamepad() {
 }
 
 bool initializeSDL() {
-  setenv("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", "1", true);
-
+  SDL_SetHint("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", "1");
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
   if (!SDL_Init(SDL_INIT_GAMEPAD)) {
