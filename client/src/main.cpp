@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <format>
 #include <mpv/client.h>
 #include <string>
@@ -74,8 +75,8 @@ bool openFirstGamepad() {
 }
 
 bool initializeSDL() {
-  SDL_SetHint("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", "1");
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+  SDL_SetHint("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", "1");
 
   if (!SDL_Init(SDL_INIT_GAMEPAD)) {
     printf("SDL_Init failed: %s\n", SDL_GetError());
@@ -161,6 +162,8 @@ public:
   }
 
   void begin(std::string_view path = "/dev/video0") {
+    system(std::format("v4l2-ctl -d {} -v width=1280,height=720", path).data());
+
     _mpv = mpv_create();
 
     mpv_set_property_string(_mpv, "profile", "low-latency");
