@@ -17,7 +17,15 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 
-add_subdirectory("${PROJECT_SOURCE_DIR}/../libgamepad" gamepad)
+set(SDL_X11 OFF)
+set(SDL_WAYLAND OFF)
+set(SDL_VULKAN OFF)
+set(SDL_PULSEAUDIO OFF)
+set(SDL_PIPEWIRE OFF)
+set(SDL_ALSA OFF)
+set(SDL_IBUS OFF)
+set(SDL_UNIX_CONSOLE_BUILD ON)
+add_subdirectory(SDL EXCLUDE_FROM_ALL)
 
 include_directories(
   ${PROJECT_SOURCE_DIR}/src
@@ -30,7 +38,10 @@ file(GLOB SRC_FILES
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
-target_link_libraries(${PROJECT_NAME} gamepad)
+target_link_libraries(${PROJECT_NAME}
+  SDL3::SDL3
+  mpv
+)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
   CXX_STANDARD 23
@@ -39,3 +50,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+
+add_custom_target(appimage
+  COMMAND make install DESTDIR=${CMAKE_BINARY_DIR}/_AppDir
+  COMMAND VERSION=dev linuxdeployqt.AppImage ${CMAKE_BINARY_DIR}/_AppDir/usr/share/applications/${PROJECT_NAME}.desktop -appimage -no-translations
+)

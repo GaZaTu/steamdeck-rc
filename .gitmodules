@@ -1,3 +1,3 @@
-[submodule "libgamepad"]
-	path = libgamepad
-	url = https://github.com/univrsal/libgamepad.git
+[submodule "client/SDL"]
+	path = client/SDL
+	url = https://github.com/libsdl-org/SDL.git
