@@ -185,6 +185,8 @@ public:
   }
 };
 
+constexpr auto SDL_GAMEPAD_DEADZONE = 3000;
+
 int main(int argc, char** argv) {
   RCConfig config;
 
@@ -205,12 +207,12 @@ int main(int argc, char** argv) {
 
   SDL_Event event;
 
-  auto quit = false;
-  while (!quit) {
+  auto running = false;
+  while (running) {
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
       case SDL_EVENT_QUIT:
-        quit = 1;
+        running = false;
         break;
 
       case SDL_EVENT_GAMEPAD_ADDED:
@@ -273,13 +275,19 @@ int main(int argc, char** argv) {
         }
         break;
 
+      case SDL_EVENT_GAMEPAD_BUTTON_UP:
+        printf("SDL_EVENT_GAMEPAD_BUTTON_UP: %d\n", event.gbutton.button);
+        break;
+
       case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-        // printf("SDL_EVENT_GAMEPAD_AXIS_MOTION: %d, %d\n", event.gaxis.axis, event.gaxis.value);
-        video.setText(std::format("axis{}", event.gaxis.axis), {std::format("axis{}: {}", event.gaxis.axis, event.gaxis.value), "w-tw-8", std::format("h-{}", 32 * (event.gaxis.axis + 2))});
-        gamepad_event.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
-        gamepad_event.axis_motion.axis = event.gaxis.axis;
-        gamepad_event.axis_motion.value = event.gaxis.value;
-        brain.write(gamepad_event);
+        if (std::abs(event.gaxis.value) > SDL_GAMEPAD_DEADZONE) {
+          // printf("SDL_EVENT_GAMEPAD_AXIS_MOTION: %d, %d\n", event.gaxis.axis, event.gaxis.value);
+          video.setText(std::format("axis{}", event.gaxis.axis), {std::format("axis{}: {}", event.gaxis.axis, event.gaxis.value), "w-tw-8", std::format("h-{}", 32 * (event.gaxis.axis + 2))});
+          gamepad_event.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
+          gamepad_event.axis_motion.axis = event.gaxis.axis;
+          gamepad_event.axis_motion.value = event.gaxis.value;
+          brain.write(gamepad_event);
+        }
         break;
       }
     }
@@ -304,7 +312,7 @@ int main(int argc, char** argv) {
     auto mpv_event = video.pollEvent();
     if (mpv_event) {
       if (mpv_event->event_id == MPV_EVENT_SHUTDOWN) {
-        quit = 1;
+        running = false;
         continue;
       }
     }
