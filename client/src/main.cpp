@@ -161,7 +161,12 @@ public:
     }
   }
 
-  void begin(std::string_view path = "/dev/video0") {
+  void begin(std::string_view path = "") {
+    if (path.empty()) {
+      // TODO: auto select /dev/video{}
+      return;
+    }
+
     system(std::format("v4l2-ctl -d {} -v width=1280,height=720", path).data());
 
     _mpv = mpv_create();
@@ -192,11 +197,11 @@ int main(int argc, char** argv) {
   RCConfig config;
 
   RCBrain brain;
-  brain.open();
+  brain.open("/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_24:EC:4A:10:39:BC-if00");
   printf("opened serial device\n");
 
   RCVideoPlayer video;
-  video.begin();
+  video.begin("/dev/video0");
 
   if (!initializeSDL()) {
     printf("failed to initialize SDL\n");
