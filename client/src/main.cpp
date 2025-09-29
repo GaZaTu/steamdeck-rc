@@ -283,7 +283,7 @@ int main(int argc, char** argv) {
 
       case SDL_EVENT_GAMEPAD_AXIS_MOTION:
         if (std::abs(std::abs(event.gaxis.value) - std::abs(axis_positions[event.gaxis.value])) > SDL_GAMEPAD_DEADZONE) {
-          axis_positions[event.gaxis.value] = event.gaxis.value;
+          axis_positions[event.gaxis.axis] = event.gaxis.value;
           // printf("SDL_EVENT_GAMEPAD_AXIS_MOTION: %d, %d\n", event.gaxis.axis, event.gaxis.value);
           video.setText(std::format("axis{}", event.gaxis.axis), {std::format("axis{}: {}", event.gaxis.axis, event.gaxis.value), "w-tw-8", std::format("h-{}", 32 * (event.gaxis.axis + 2))});
           gamepad_event.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
