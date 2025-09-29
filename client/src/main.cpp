@@ -65,9 +65,11 @@ bool initializeSDL() {
   }
 
   auto gamepad_count = 0;
-  for (auto attempt = 0; attempt < 10; attempt++) {
+  for (auto attempt = 0; attempt < 3; attempt++) {
     auto gamepads = SDL_GetGamepads(&gamepad_count);
     if (!gamepad_count) {
+      printf("gamepad_count: %d\n", gamepad_count);
+      sleep(5);
       continue;
     }
 
@@ -190,7 +192,7 @@ int main(int argc, char** argv) {
   video.begin();
 
   if (!initializeSDL()) {
-    printf("failed to initialize SDL (controller probably not found)\n");
+    printf("failed to initialize SDL\n");
     return 1;
   }
 
