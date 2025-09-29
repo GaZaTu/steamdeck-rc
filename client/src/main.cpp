@@ -1,3 +1,4 @@
+#include "SDL3/SDL_events.h"
 #include "rc-protocol.hpp"
 #include "serialib.h"
 #include <SDL3/SDL.h>
@@ -56,6 +57,23 @@ public:
   }
 };
 
+bool openFirstGamepad() {
+  auto gamepad_count = 0;
+  auto gamepads = SDL_GetGamepads(&gamepad_count);
+  if (!gamepad_count) {
+    printf("gamepad_count: %d\n", gamepad_count);
+    return false;
+  }
+
+  auto gamepad = SDL_OpenGamepad(*gamepads);
+  if (!gamepad) {
+    printf("SDL_OpenGamepad failed: %s\n", SDL_GetError());
+    return false;
+  }
+
+  return true;
+}
+
 bool initializeSDL() {
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
@@ -64,25 +82,9 @@ bool initializeSDL() {
     return false;
   }
 
-  auto gamepad_count = 0;
-  for (auto attempt = 0; attempt < 3; attempt++) {
-    auto gamepads = SDL_GetGamepads(&gamepad_count);
-    if (!gamepad_count) {
-      printf("gamepad_count: %d\n", gamepad_count);
-      sleep(5);
-      continue;
-    }
+  openFirstGamepad();
 
-    auto gamepad = SDL_OpenGamepad(*gamepads);
-    if (!gamepad) {
-      printf("SDL_OpenGamepad failed: %s\n", SDL_GetError());
-      return false;
-    }
-
-    break;
-  }
-
-  return gamepad_count != 0;
+  return true;
 }
 
 struct RCOverlayText {
@@ -148,7 +150,6 @@ private:
       _vf += text.to_string();
     }
 
-    printf("vf: %s\n", _vf.data());
     mpv_set_property_string(_mpv, "vf", _vf.data());
   }
 
@@ -207,6 +208,15 @@ int main(int argc, char** argv) {
       switch (event.type) {
       case SDL_EVENT_QUIT:
         quit = 1;
+        break;
+
+      case SDL_EVENT_GAMEPAD_ADDED:
+        printf("SDL_EVENT_GAMEPAD_ADDED\n");
+        openFirstGamepad();
+        break;
+
+      case SDL_EVENT_GAMEPAD_REMOVED:
+        printf("SDL_EVENT_GAMEPAD_REMOVED\n");
         break;
 
       case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
