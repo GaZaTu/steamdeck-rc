@@ -227,7 +227,6 @@ int main(int argc, char** argv) {
         if (event.gbutton.button == SDL_GAMEPAD_BUTTON_START) {
           config.visible = !config.visible;
           if (config.visible) {
-            printf("config: %s\n", config.to_string().data());
             video.setText("menu", config.to_text());
           } else {
             video.setText("menu", {});
@@ -275,7 +274,7 @@ int main(int argc, char** argv) {
         break;
 
       case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-        printf("SDL_EVENT_GAMEPAD_AXIS_MOTION: %d, %d\n", event.gaxis.axis, event.gaxis.value);
+        // printf("SDL_EVENT_GAMEPAD_AXIS_MOTION: %d, %d\n", event.gaxis.axis, event.gaxis.value);
         video.setText(std::format("axis{}", event.gaxis.axis), {std::format("axis{}: {}", event.gaxis.axis, event.gaxis.value), "w-tw-8", std::format("h-{}", 32 * (event.gaxis.axis + 2))});
         gamepad_event.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
         gamepad_event.axis_motion.axis = event.gaxis.axis;
