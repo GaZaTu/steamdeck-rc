@@ -60,7 +60,9 @@ bool openFirstGamepad() {
   auto gamepad_count = 0;
   auto gamepads = SDL_GetGamepads(&gamepad_count);
   if (!gamepad_count) {
-    printf("gamepad_count: %d\n", gamepad_count);
+    printf("gamepad_count: %d, gamepads: %ld\n", gamepad_count, (uint64_t)gamepads);
+    auto joysticks = SDL_GetJoysticks(&gamepad_count);
+    printf("gamepad_count: %d, gamepads: %ld\n", gamepad_count, (uint64_t)joysticks);
     return false;
   }
 
@@ -75,8 +77,6 @@ bool openFirstGamepad() {
 
 bool initializeSDL() {
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
-  SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "1");
-  SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_STEAMDECK, "1");
 
   if (!SDL_Init(SDL_INIT_GAMEPAD)) {
     printf("SDL_Init failed: %s\n", SDL_GetError());
