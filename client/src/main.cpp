@@ -60,9 +60,7 @@ bool openFirstGamepad() {
   auto gamepad_count = 0;
   auto gamepads = SDL_GetGamepads(&gamepad_count);
   if (!gamepad_count) {
-    printf("gamepad_count: %d, gamepads: %ld\n", gamepad_count, (uint64_t)gamepads);
-    auto joysticks = SDL_GetJoysticks(&gamepad_count);
-    printf("gamepad_count: %d, gamepads: %ld\n", gamepad_count, (uint64_t)joysticks);
+    printf("gamepad_count: %d\n", gamepad_count);
     return false;
   }
 
@@ -76,6 +74,8 @@ bool openFirstGamepad() {
 }
 
 bool initializeSDL() {
+  setenv("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", "1", true);
+
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
   if (!SDL_Init(SDL_INIT_GAMEPAD)) {
