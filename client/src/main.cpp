@@ -185,7 +185,8 @@ public:
   }
 };
 
-constexpr auto SDL_GAMEPAD_DEADZONE = 256;
+constexpr auto SDL_GAMEPAD_MIN_DIFF = 256;
+constexpr auto SDL_GAMEPAD_DEADZONE = 2048;
 
 int main(int argc, char** argv) {
   RCConfig config;
@@ -282,7 +283,10 @@ int main(int argc, char** argv) {
         break;
 
       case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-        if (std::abs(std::abs(event.gaxis.value) - std::abs(axis_positions[event.gaxis.axis])) > SDL_GAMEPAD_DEADZONE) {
+        if (std::abs(event.gaxis.value) < SDL_GAMEPAD_DEADZONE) {
+          event.gaxis.value = 0;
+        }
+        if (std::abs(std::abs(event.gaxis.value) - std::abs(axis_positions[event.gaxis.axis])) > SDL_GAMEPAD_MIN_DIFF) {
           axis_positions[event.gaxis.axis] = event.gaxis.value;
           // printf("SDL_EVENT_GAMEPAD_AXIS_MOTION: %d, %d\n", event.gaxis.axis, event.gaxis.value);
           video.setText(std::format("axis{}", event.gaxis.axis), {std::format("axis{}: {}", event.gaxis.axis, event.gaxis.value), "w-tw-8", std::format("h-{}", 32 * (event.gaxis.axis + 2))});
