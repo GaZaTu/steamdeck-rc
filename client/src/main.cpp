@@ -1,4 +1,3 @@
-#include "SDL3/SDL_events.h"
 #include "rc-protocol.hpp"
 #include "serialib.h"
 #include <SDL3/SDL.h>
@@ -76,6 +75,8 @@ bool openFirstGamepad() {
 
 bool initializeSDL() {
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+  SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "1");
+  SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_STEAMDECK, "1");
 
   if (!SDL_Init(SDL_INIT_GAMEPAD)) {
     printf("SDL_Init failed: %s\n", SDL_GetError());
