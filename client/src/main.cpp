@@ -207,7 +207,7 @@ int main(int argc, char** argv) {
 
   SDL_Event event;
 
-  auto running = false;
+  auto running = true;
   while (running) {
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
