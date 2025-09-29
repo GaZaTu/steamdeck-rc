@@ -12,6 +12,8 @@ class RCBrain {
 private:
   serialib _serial;
 
+  rc::GamepadEvent _gamepad_event;
+
 public:
   bool open(std::string_view path = "") {
     if (path.empty()) {
@@ -38,6 +40,20 @@ public:
   inline bool available() {
     return _serial.available();
   }
+
+  inline void setELRSChannel(uint8_t channel) {
+    rc::GamepadEvent gamepad_event;
+    gamepad_event.type = rc::GamepadEvent::PAD_EVENT_SET_ELRS_CHANNEL;
+    gamepad_event.set_elrs_channel.channel = channel;
+    write(gamepad_event);
+  }
+
+  inline void setVRXChannel(uint8_t channel) {
+    rc::GamepadEvent gamepad_event;
+    gamepad_event.type = rc::GamepadEvent::PAD_EVENT_SET_VRX_CHANNEL;
+    gamepad_event.set_vrx_channel.channel = channel;
+    write(gamepad_event);
+  }
 };
 
 bool initializeSDL() {
@@ -49,19 +65,22 @@ bool initializeSDL() {
   }
 
   auto gamepad_count = 0;
-  auto gamepads = SDL_GetGamepads(&gamepad_count);
-  if (!gamepad_count) {
-    printf("gamepad_count: %d\n", gamepad_count);
-    return false;
+  for (auto attempt = 0; attempt < 10; attempt++) {
+    auto gamepads = SDL_GetGamepads(&gamepad_count);
+    if (!gamepad_count) {
+      continue;
+    }
+
+    auto gamepad = SDL_OpenGamepad(*gamepads);
+    if (!gamepad) {
+      printf("SDL_OpenGamepad failed: %s\n", SDL_GetError());
+      return false;
+    }
+
+    break;
   }
 
-  auto gamepad = SDL_OpenGamepad(*gamepads);
-  if (!gamepad) {
-    printf("SDL_OpenGamepad failed: %s\n", SDL_GetError());
-    return false;
-  }
-
-  return true;
+  return gamepad_count != 0;
 }
 
 struct RCOverlayText {
@@ -171,6 +190,7 @@ int main(int argc, char** argv) {
   video.begin();
 
   if (!initializeSDL()) {
+    printf("failed to initialize SDL (controller probably not found)\n");
     return 1;
   }
 
@@ -211,16 +231,10 @@ int main(int argc, char** argv) {
             case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
               switch (config.selection) {
               case RCConfig::ELRS_CHANNEL:
-                config.elrs_channel -= 1;
-                gamepad_event.type = rc::GamepadEvent::PAD_EVENT_SET_ELRS_CHANNEL;
-                gamepad_event.set_elrs_channel.channel = config.elrs_channel;
-                brain.write(gamepad_event);
+                brain.setELRSChannel(config.elrs_channel -= 1);
                 break;
               case RCConfig::VRX_CHANNEL:
-                config.vrx_channel -= 1;
-                gamepad_event.type = rc::GamepadEvent::PAD_EVENT_SET_VRX_CHANNEL;
-                gamepad_event.set_vrx_channel.channel = config.vrx_channel;
-                brain.write(gamepad_event);
+                brain.setVRXChannel(config.vrx_channel -= 1);
                 break;
               }
               video.setText("menu", config.to_text());
@@ -228,16 +242,10 @@ int main(int argc, char** argv) {
             case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
               switch (config.selection) {
               case RCConfig::ELRS_CHANNEL:
-                config.elrs_channel += 1;
-                gamepad_event.type = rc::GamepadEvent::PAD_EVENT_SET_ELRS_CHANNEL;
-                gamepad_event.set_elrs_channel.channel = config.elrs_channel;
-                brain.write(gamepad_event);
+                brain.setELRSChannel(config.elrs_channel += 1);
                 break;
               case RCConfig::VRX_CHANNEL:
-                config.vrx_channel += 1;
-                gamepad_event.type = rc::GamepadEvent::PAD_EVENT_SET_VRX_CHANNEL;
-                gamepad_event.set_vrx_channel.channel = config.vrx_channel;
-                brain.write(gamepad_event);
+                brain.setVRXChannel(config.vrx_channel += 1);
                 break;
               }
               video.setText("menu", config.to_text());
