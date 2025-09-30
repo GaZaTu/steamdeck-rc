@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.12.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.28.0 FATAL_ERROR)
 project(steamdeck-rc-client VERSION 0.0.1 LANGUAGES CXX)
 
-set(PROJECT_ORGANIZATION gazatu.xyz)
+include(FetchContent)
 
-cmake_policy(SET CMP0074 NEW)
+set(PROJECT_ORGANIZATION gazatu.xyz)
 
 add_definitions(
   -DPROJECT_ORGANIZATION="${PROJECT_ORGANIZATION}"
@@ -25,7 +25,14 @@ set(SDL_PIPEWIRE OFF)
 set(SDL_ALSA OFF)
 set(SDL_IBUS OFF)
 set(SDL_UNIX_CONSOLE_BUILD ON)
-add_subdirectory(SDL EXCLUDE_FROM_ALL)
+
+FetchContent_Declare(
+  SDL
+  GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+  GIT_TAG        release-3.2.22
+)
+
+FetchContent_MakeAvailable(SDL)
 
 include_directories(
   ${PROJECT_SOURCE_DIR}/src

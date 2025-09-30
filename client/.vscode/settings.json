@@ -123,8 +123,7 @@
     "**/.svn": true,
     "**/.hg": true,
     "**/CVS": true,
-    "**/.DS_Store": true,
-    "SDL": true
+    "**/.DS_Store": true
   },
   "cmake.configureOnOpen": true
 }

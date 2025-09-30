@@ -3,6 +3,8 @@
 #include <cstdint>
 
 namespace rc {
+constexpr auto CDC_PACKET_SIZE = 64;
+
 typedef enum SDL_GamepadButton {
   SDL_GAMEPAD_BUTTON_INVALID = -1,
   SDL_GAMEPAD_BUTTON_SOUTH, /**< Bottom face button (e.g. Xbox A button) */
@@ -77,28 +79,32 @@ struct [[gnu::packed]] GamepadEvent {
   };
 };
 
-static_assert(sizeof(GamepadEvent) < 64);
+static_assert(sizeof(GamepadEvent) < CDC_PACKET_SIZE);
 
 struct [[gnu::packed]] RemoteEvent {
   enum Type {
-    RC_EVENT_NOTIFY_ELRS_CHANNEL = 0,
-    RC_EVENT_NOTIFY_VRX_CHANNEL,
-    RC_EVENT_NOTIFY_VRX_RSSI,
+    RC_EVENT_REPORT_ELRS_CHANNEL = 0,
+    RC_EVENT_REPORT_ELRS_RSSI,
+    RC_EVENT_REPORT_VRX_CHANNEL,
+    RC_EVENT_REPORT_VRX_RSSI,
   };
 
   uint16_t type;
   union {
     struct [[gnu::packed]] {
       uint8_t channel;
-    } notify_elrs_channel;
-    struct [[gnu::packed]] {
-      uint8_t channel;
-    } notify_vrx_channel;
+    } report_elrs_channel;
     struct [[gnu::packed]] {
       uint8_t percent;
-    } notify_vrx_rssi;
+    } report_elrs_rssi;
+    struct [[gnu::packed]] {
+      uint8_t channel;
+    } report_vrx_channel;
+    struct [[gnu::packed]] {
+      uint8_t percent;
+    } report_vrx_rssi;
   };
 };
 
-static_assert(sizeof(RemoteEvent) < 64);
+static_assert(sizeof(RemoteEvent) < CDC_PACKET_SIZE);
 } // namespace rc

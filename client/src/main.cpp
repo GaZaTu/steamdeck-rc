@@ -1,13 +1,21 @@
+#include "BasicTimer.hpp"
 #include "rc-protocol.hpp"
 #include "serialib.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <mpv/client.h>
 #include <string>
 #include <unordered_map>
+
+inline auto get_executable_path() {
+  return std::filesystem::canonical("/proc/self/exe");
+}
 
 class RCBrain {
 private:
@@ -15,27 +23,39 @@ private:
 
   rc::GamepadEvent _gamepad_event;
 
+  std::array<rc::GamepadEvent, rc::CDC_PACKET_SIZE / sizeof(rc::GamepadEvent)> _buffer;
+  uint8_t _buffer_len = 0;
+
+  BasicTimer _serial_timer{std::chrono::milliseconds{5}};
+
 public:
-  bool open(std::string_view path = "") {
+  bool open(std::string_view path = "", uint32_t baud = 115200) {
     if (path.empty()) {
       for (auto i = 0; i < 99; i++) {
         auto device_name = std::format("/dev/ttyACM{}", i);
-        if (_serial.openDevice(device_name.data(), 115200) == 1) {
+        if (_serial.openDevice(device_name.data(), baud) == 1) {
           return true;
         }
       }
       return false;
     } else {
-      return _serial.openDevice(path.data(), 115200) == 1;
+      return _serial.openDevice(path.data(), baud) == 1;
     }
   }
 
   inline void write(const rc::GamepadEvent& gamepad_event) {
-    _serial.writeBytes(&gamepad_event, sizeof(gamepad_event));
+    _buffer[_buffer_len++] = gamepad_event;
+
+    if (_serial_timer.hasTicked() || _buffer_len == _buffer.size()) {
+      _serial.writeBytes(_buffer.data(), _buffer_len * sizeof(rc::GamepadEvent));
+
+      _buffer_len = 0;
+      _serial_timer.reset();
+    }
   }
 
   inline void read(rc::RemoteEvent& remote_event) {
-    _serial.readBytes(&remote_event, sizeof(remote_event), 10);
+    _serial.readBytes(&remote_event, sizeof(remote_event), 5);
   }
 
   inline bool available() {
@@ -92,43 +112,12 @@ struct RCOverlayText {
   std::string str;
   std::string x;
   std::string y;
-  std::string fontcolor = "red";
+  std::string fontcolor = "white";
   std::string fontsize = "32";
+  std::string more = "";
 
   std::string to_string() {
-    return std::format("drawtext=text=\"{}\":x=({}):y=({}):fontcolor={}:fontsize={}:font=Mono", str, x, y, fontcolor, fontsize);
-  }
-};
-
-struct RCConfig {
-  enum {
-    INVALID = -1,
-    ELRS_CHANNEL,
-    VRX_CHANNEL,
-    COUNT,
-  };
-
-  bool visible = false;
-  int8_t selection = -1;
-
-  uint8_t elrs_channel = 0;
-  uint8_t vrx_channel = 0;
-
-  std::string to_string() {
-#define OPT(name, idx) \
-  if (str.length())    \
-    str += "\n";       \
-  str += std::format(#name "{}: {}", selection == idx ? '*' : ' ', name);
-
-    std::string str;
-    OPT(elrs_channel, ELRS_CHANNEL);
-    OPT(vrx_channel, VRX_CHANNEL);
-    return str;
-#undef OPT
-  }
-
-  RCOverlayText to_text() {
-    return {to_string(), "80", "240"};
+    return std::format("drawtext=text=\"{}\":x=({}):y=({}):fontcolor={}:fontsize={}:font=Mono{}:borderw=2", str, x, y, fontcolor, fontsize, more);
   }
 };
 
@@ -161,10 +150,10 @@ public:
     }
   }
 
-  void begin(std::string_view path = "") {
+  bool begin(std::string_view path = "") {
     if (path.empty()) {
       // TODO: auto select /dev/video{}
-      return;
+      return true;
     }
 
     system(std::format("v4l2-ctl -d {} -v width=1280,height=720", path).data());
@@ -177,7 +166,7 @@ public:
     mpv_initialize(_mpv);
 
     const char* cmd[] = {"loadfile", path.data(), nullptr};
-    mpv_command(_mpv, cmd);
+    return mpv_command(_mpv, cmd);
   }
 
   mpv_event* pollEvent() {
@@ -190,18 +179,91 @@ public:
   }
 };
 
+struct RCConfig {
+  enum {
+    INVALID = -1,
+    ELRS_CHANNEL,
+    VRX_CHANNEL,
+    COUNT,
+  };
+
+  bool visible = false;
+  int8_t selection = -1;
+
+  uint8_t elrs_channel = 0;
+  uint8_t vrx_channel = 0;
+
+  std::string serial_device;
+  std::string video_device;
+
+  void loadDevicePathsFromFile() {
+#define OPT(name)            \
+  if (key == #name) {        \
+    name = std::move(value); \
+  }
+
+    auto dir = get_executable_path().parent_path();
+    auto cfg = dir / "devices.cfg";
+
+    std::ifstream cfg_stream{cfg};
+    std::string line;
+    while (std::getline(cfg_stream, line)) {
+      auto key = line.substr(0, line.find_first_of('='));
+      auto value = line.substr(line.find_first_of('=') + 1);
+
+      OPT(serial_device);
+      OPT(video_device);
+    }
+
+#undef OPT
+  }
+
+  std::string to_string() {
+#define OPT(name, idx) \
+  if (str.length())    \
+    str += "\n";       \
+  str += std::format(#name "{}: {}", selection == idx ? '*' : ' ', name);
+
+    std::string str;
+    OPT(elrs_channel, ELRS_CHANNEL);
+    OPT(vrx_channel, VRX_CHANNEL);
+    return str;
+
+#undef OPT
+  }
+
+  RCOverlayText to_text() {
+    return {to_string(), "80", "240", "red", "32", ":box=1:boxcolor=#00000070:boxborderw=4"};
+  }
+
+  void show(RCVideoPlayer& video) {
+    video.setText("menu", to_text());
+  }
+
+  void hide(RCVideoPlayer& video) {
+    video.setText("menu", {});
+  }
+};
+
 constexpr auto SDL_GAMEPAD_MIN_DIFF = 256;
 constexpr auto SDL_GAMEPAD_DEADZONE = 2048;
 
 int main(int argc, char** argv) {
   RCConfig config;
+  config.loadDevicePathsFromFile();
 
   RCBrain brain;
-  brain.open("/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_24:EC:4A:10:39:BC-if00");
-  printf("opened serial device\n");
+  if (brain.open(config.serial_device)) {
+    printf("opened serial device at %s\n", config.serial_device.data());
+  }
 
   RCVideoPlayer video;
-  video.begin("/dev/video0");
+  if (video.begin(config.video_device)) {
+    printf("opened video device at %s\n", config.video_device.data());
+  }
+
+  video.setText("time", {"%{localtime}", "16", "h-th-16", "white", "20"});
+  video.setText("vrx_rssi", {"vrx_rssi: 0", "480", "h-th-16"});
 
   if (!initializeSDL()) {
     printf("failed to initialize SDL\n");
@@ -237,20 +299,20 @@ int main(int argc, char** argv) {
         if (event.gbutton.button == SDL_GAMEPAD_BUTTON_START) {
           config.visible = !config.visible;
           if (config.visible) {
-            video.setText("menu", config.to_text());
+            config.show(video);
           } else {
-            video.setText("menu", {});
+            config.hide(video);
           }
         } else {
           if (config.visible) {
             switch (event.gbutton.button) {
             case SDL_GAMEPAD_BUTTON_DPAD_UP:
               config.selection = std::max<int8_t>(config.selection - 1, RCConfig::INVALID);
-              video.setText("menu", config.to_text());
+              config.show(video);
               break;
             case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
               config.selection = std::min<int8_t>(config.selection + 1, RCConfig::COUNT);
-              video.setText("menu", config.to_text());
+              config.show(video);
               break;
             case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
               switch (config.selection) {
@@ -261,7 +323,7 @@ int main(int argc, char** argv) {
                 brain.setVRXChannel(config.vrx_channel -= 1);
                 break;
               }
-              video.setText("menu", config.to_text());
+              config.show(video);
               break;
             case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
               switch (config.selection) {
@@ -272,7 +334,7 @@ int main(int argc, char** argv) {
                 brain.setVRXChannel(config.vrx_channel += 1);
                 break;
               }
-              video.setText("menu", config.to_text());
+              config.show(video);
               break;
             }
           } else {
@@ -307,16 +369,16 @@ int main(int argc, char** argv) {
     if (brain.available()) {
       brain.read(remote_event);
       switch (remote_event.type) {
-      case rc::RemoteEvent::RC_EVENT_NOTIFY_ELRS_CHANNEL:
-        printf("RC_EVENT_NOTIFY_ELRS_CHANNEL: %d\n", remote_event.notify_elrs_channel.channel);
+      case rc::RemoteEvent::RC_EVENT_REPORT_ELRS_CHANNEL:
+        printf("RC_EVENT_NOTIFY_ELRS_CHANNEL: %d\n", remote_event.report_elrs_channel.channel);
         break;
 
-      case rc::RemoteEvent::RC_EVENT_NOTIFY_VRX_CHANNEL:
-        printf("RC_EVENT_NOTIFY_VRX_CHANNEL: %d\n", remote_event.notify_vrx_channel.channel);
+      case rc::RemoteEvent::RC_EVENT_REPORT_VRX_CHANNEL:
+        printf("RC_EVENT_NOTIFY_VRX_CHANNEL: %d\n", remote_event.report_vrx_channel.channel);
         break;
 
-      case rc::RemoteEvent::RC_EVENT_NOTIFY_VRX_RSSI:
-        printf("RC_EVENT_NOTIFY_VRX_RSSI: %d%%\n", remote_event.notify_vrx_rssi.percent);
+      case rc::RemoteEvent::RC_EVENT_REPORT_VRX_RSSI:
+        printf("RC_EVENT_NOTIFY_VRX_RSSI: %d%%\n", remote_event.report_vrx_rssi.percent);
         break;
       }
     }
