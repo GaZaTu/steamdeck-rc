@@ -76,7 +76,6 @@
     "span": "cpp",
     "text_encoding": "cpp",
     "*.fdm": "cpp",
-    "iostream": "cpp",
-    "codecvt": "cpp"
+    "iostream": "cpp"
   }
 }

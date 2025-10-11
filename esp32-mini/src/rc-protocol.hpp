@@ -1,5 +1,6 @@
 #pragma once
 
+#include "crsf-structs.hpp"
 #include <cstdint>
 
 namespace rc {
@@ -53,29 +54,47 @@ typedef enum SDL_GamepadAxis {
   SDL_GAMEPAD_AXIS_COUNT,
 } SDL_GamepadAxis;
 
+enum Parameter {
+  // elrs
+  PARAM_PACKET_RATE = elrs::PARAM_PACKET_RATE,
+  PARAM_TLM_RATIO = elrs::PARAM_TLM_RATIO,
+  PARAM_SWITCH_MODE = elrs::PARAM_SWITCH_MODE,
+  PARAM_LINK_MODE = elrs::PARAM_LINK_MODE,
+  PARAM_MODEL_MATCH = elrs::PARAM_MODEL_MATCH,
+  PARAM_MAX_POWER = elrs::PARAM_MAX_POWER,
+  PARAM_WIFI = elrs::PARAM_WIFI,
+  // custom
+  PARAM_VRX_FREQ = 0xC0,
+};
+
 struct [[gnu::packed]] GamepadEvent {
   enum Type {
-    PAD_EVENT_SET_ELRS_CHANNEL = 0,
-    PAD_EVENT_SET_VRX_CHANNEL,
+    PAD_EVENT_GET_PARAMETER,
+    PAD_EVENT_SET_PARAMETER,
     SDL_EVENT_GAMEPAD_AXIS_MOTION = 1616,
     SDL_EVENT_GAMEPAD_BUTTON_DOWN = 1617,
+    SDL_EVENT_GAMEPAD_BUTTON_UP = 1618,
   };
 
   uint16_t type;
   union {
     struct [[gnu::packed]] {
-      uint8_t channel;
-    } set_elrs_channel;
+      uint8_t parameter;
+    } get_parameter;
     struct [[gnu::packed]] {
-      uint8_t channel;
-    } set_vrx_channel;
-    struct [[gnu::packed]] {
-      uint8_t button;
-    } button_down;
+      uint8_t parameter;
+      uint8_t value;
+    } set_parameter;
     struct [[gnu::packed]] {
       uint8_t axis;
       int16_t value;
     } axis_motion;
+    struct [[gnu::packed]] {
+      uint8_t button;
+    } button_down;
+    struct [[gnu::packed]] {
+      uint8_t button;
+    } button_up;
   };
 };
 
@@ -83,20 +102,25 @@ static_assert(sizeof(GamepadEvent) < CDC_PACKET_SIZE);
 
 struct [[gnu::packed]] RemoteEvent {
   enum Type {
-    RC_EVENT_REPORT_ELRS_CHANNEL = 0,
-    RC_EVENT_REPORT_ELRS_RSSI,
+    RC_EVENT_REPORT_LINK_STATS,
+    RC_EVENT_REPORT_TELEMETRY,
+    RC_EVENT_REPORT_ARMED,
+    RC_EVENT_REPORT_PARAMETER,
     RC_EVENT_REPORT_VRX_CHANNEL,
     RC_EVENT_REPORT_VRX_RSSI,
   };
 
   uint16_t type;
   union {
+    crsf::LinkStatistics report_link_stats;
+    crsf::Telemetry report_telemetry;
     struct [[gnu::packed]] {
-      uint8_t channel;
-    } report_elrs_channel;
+      uint8_t armed;
+    } report_armed;
     struct [[gnu::packed]] {
-      uint8_t percent;
-    } report_elrs_rssi;
+      uint8_t parameter;
+      uint8_t value;
+    } report_parameter;
     struct [[gnu::packed]] {
       uint8_t channel;
     } report_vrx_channel;
