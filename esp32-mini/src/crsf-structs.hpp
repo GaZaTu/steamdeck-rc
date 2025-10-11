@@ -131,11 +131,11 @@ struct PACKED Attitude {
 CRSF_MK_FRAME(Attitude);
 
 struct PACKED Telemetry {
-  GPS gps{0};
-  Vario vario{0};
-  BatterySensor battery{0};
-  BaroAltitude baroalt{0};
-  Attitude attitude{0};
+  GPS gps;
+  Vario vario;
+  BatterySensor battery;
+  BaroAltitude baroalt;
+  Attitude attitude;
 };
 
 struct PACKED LinkStatistics {
