@@ -5,31 +5,10 @@
 namespace crsf {
 constexpr auto BAUD = 400000;
 
-constexpr auto CHANNEL_VALUE_MIN = 172;
-constexpr auto CHANNEL_VALUE_MID = 991;
-constexpr auto CHANNEL_VALUE_MAX = 1811;
-constexpr auto CHANNEL_VALUE_RANGE = CHANNEL_VALUE_MAX - CHANNEL_VALUE_MIN;
-
-// AETR
-enum Channel {
-  CHANNEL_AILERON,
-  CHANNEL_ELEVATOR,
-  CHANNEL_THROTTLE,
-  CHANNEL_RUDDER,
-  CHANNEL_AUX1, // (CH5)  ARM switch for Expresslrs
-  CHANNEL_AUX2, // (CH6)  angel / airmode change
-  CHANNEL_AUX3, // (CH7)  flip after crash
-  CHANNEL_AUX4, // (CH8)
-  CHANNEL_AUX5, // (CH9)
-  CHANNEL_AUX6, // (CH10)
-  CHANNEL_AUX7, // (CH11)
-  CHANNEL_AUX8, // (CH12)
-  CHANNEL_UNUSED1,
-  CHANNEL_UNUSED2,
-  CHANNEL_UNUSED3,
-  CHANNEL_UNUSED4,
-  CHANNEL_COUNT,
-};
+constexpr uint16_t CHANNEL_VALUE_MIN = 172;
+constexpr uint16_t CHANNEL_VALUE_MID = 991;
+constexpr uint16_t CHANNEL_VALUE_MAX = 1811;
+constexpr uint16_t CHANNEL_VALUE_RANGE = CHANNEL_VALUE_MAX - CHANNEL_VALUE_MIN;
 
 #define PACKED [[gnu::packed]]
 
@@ -53,7 +32,7 @@ enum FrameType {
   FRAMETYPE_PARAMETER_WRITE = 0x2D,
   FRAMETYPE_ELRS_STATUS = 0x2E, // ELRS good/bad packet count and status flags
   FRAMETYPE_COMMAND = 0x32,
-  FRAMETYPE_RADIO_ID = 0x3A,
+  FRAMETYPE_REMOTE_RELATED = 0x3A,
   // Ardupilot frames
   FRAMETYPE_ARDUPILOT_PASSTHROUGH = 0x80,
   // MavLink frames
@@ -63,6 +42,26 @@ enum FrameType {
 enum Address {
   ADDRESS_RC = 0xEA, // Remote Control
   ADDRESS_TX = 0xEE, // R/C Transmitter Module / Crossfire Tx
+};
+
+struct PACKED ChannelsPacked {
+  uint8_t frametype = FRAMETYPE_RC_CHANNELS_PACKED;
+  uint16_t aileron : 11 = CHANNEL_VALUE_MID;
+  uint16_t elevator : 11 = CHANNEL_VALUE_MID;
+  uint16_t throttle : 11 = CHANNEL_VALUE_MID;
+  uint16_t rudder : 11 = CHANNEL_VALUE_MID;
+  uint16_t aux1 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t aux2 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t aux3 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t aux4 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t aux5 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t aux6 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t aux7 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t aux8 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t ch12 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t ch13 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t ch14 : 11 = CHANNEL_VALUE_MIN;
+  uint16_t ch15 : 11 = CHANNEL_VALUE_MIN;
 };
 
 constexpr auto EXT_HEADER_BEGIN = 0x28;
@@ -201,6 +200,27 @@ struct PACKED MavlinkEnvelope {
 } // namespace crsf
 
 namespace elrs {
+// AETR
+enum Channel {
+  CHANNEL_AILERON,
+  CHANNEL_ELEVATOR,
+  CHANNEL_THROTTLE,
+  CHANNEL_RUDDER,
+  CHANNEL_AUX1, // (CH5)  ARM switch for Expresslrs
+  CHANNEL_AUX2, // (CH6)  angel / airmode change
+  CHANNEL_AUX3, // (CH7)  flip after crash
+  CHANNEL_AUX4, // (CH8)
+  CHANNEL_AUX5, // (CH9)
+  CHANNEL_AUX6, // (CH10)
+  CHANNEL_AUX7, // (CH11)
+  CHANNEL_AUX8, // (CH12)
+  CHANNEL_UNUSED1,
+  CHANNEL_UNUSED2,
+  CHANNEL_UNUSED3,
+  CHANNEL_UNUSED4,
+  CHANNEL_COUNT,
+};
+
 enum Parameter {
   PARAM_PACKET_RATE = 0x01,
   PARAM_TLM_RATIO = 0x02,

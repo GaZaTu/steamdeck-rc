@@ -5,6 +5,7 @@
  *   - https://github.com/kkbin505/Arduino-Transmitter-for-ELRS
  *   - https://github.com/danxdz/simpleTx_esp32
  *   - https://github.com/plutphil/SWUARTSerial/blob/main/README.md
+ *   - https://github.com/EdgeTX/edgetx/blob/main/radio/src/telemetry/crossfire.h
  */
 
 #pragma once
@@ -32,28 +33,32 @@ struct Parameter {
   std::variant<double, uint8_t, std::string> value;
 };
 
-class Queue {
+class Transmitter;
+
+class TransmitQueue {
 private:
   std::deque<std::vector<uint8_t>> _queue;
 
-public:
   uint8_t _settings_chunk_idx[UINT8_MAX] = {0};
 
-  size_t size() const noexcept {
+public:
+  friend Transmitter;
+
+  inline size_t size() const noexcept {
     return _queue.size();
   }
 
-  void push(std::vector<uint8_t>&& values) noexcept {
+  inline void push(std::vector<uint8_t>&& values) {
     _queue.emplace_back(std::move(values));
   }
 
-  void push(std::span<const uint8_t> values) noexcept {
+  void push(std::span<const uint8_t> values) {
     std::vector<uint8_t> vector;
     vector.assign(values.begin(), values.end());
     push(std::move(vector));
   }
 
-  void push_parameter_read(uint8_t parameter, uint8_t chunk_idx = 0) noexcept {
+  void push_parameter_read(uint8_t parameter, uint8_t chunk_idx = 0) {
     _settings_chunk_idx[parameter] = chunk_idx;
     std::initializer_list<uint8_t> values{FRAMETYPE_PARAMETER_READ, ADDRESS_TX, ADDRESS_RC, parameter, _settings_chunk_idx[parameter]};
     if (chunk_idx > 0) {
@@ -63,37 +68,24 @@ public:
     }
   }
 
-  void push_parameter_write(uint8_t parameter, uint8_t value) noexcept {
+  inline void push_parameter_write(uint8_t parameter, uint8_t value) {
     push({FRAMETYPE_PARAMETER_WRITE, ADDRESS_TX, ADDRESS_RC, parameter, value});
   }
 
-  std::span<const uint8_t> front() const noexcept {
+  inline std::span<const uint8_t> front() const noexcept {
     return _queue.front();
   }
 
-  void pop_front() noexcept {
+  inline void pop_front() noexcept {
     _queue.pop_front();
   }
 };
 
-// class PhysicalLayer {
-// public:
-//   virtual void begin(std::string_view path) = 0;
-
-//   virtual size_t available() = 0;
-
-//   virtual size_t readBytes(std::span<uint8_t> buffer) = 0;
-
-//   virtual size_t write(std::span<uint8_t> buffer) = 0;
-
-//   virtual void flush(bool tx_only = false) = 0;
-// };
-
-class OneWire {
+class Transmitter {
 private:
   HardwareSerial& _serial;
 
-  uint8_t _buffer[256];
+  uint8_t _io_buffer[128];
 
   uint32_t _tx_timeframe = 0;
 
@@ -106,24 +98,28 @@ private:
   uint8_t _mavlink_buffer[282];
   uint16_t _mavlink_buffer_len = 0;
 
-  void writeChannels() noexcept;
+  IRAM_ATTR void write(std::span<const uint8_t> frame);
 
-  void write(std::span<const uint8_t> frame) noexcept;
-
-  void write(const std::initializer_list<uint8_t>& frame) noexcept {
+  inline void write(const std::initializer_list<uint8_t>& frame) {
     write({STD_SPAN_ARGS(frame.begin(), frame.end())});
   }
 
-  void ping() noexcept {
-    write({FRAMETYPE_PARAMETER_WRITE, ADDRESS_TX, ADDRESS_RC, 0x00, 0x00});
+  inline void writeChannels() {
+    write(std::span<uint8_t>{STD_SPAN_ARGS((uint8_t*)&channels, sizeof(channels))});
   }
 
-  void read(const Header& header, std::span<const uint8_t> payload) noexcept;
+  void readRemoteFrame(std::span<const uint8_t> payload);
+
+  void readSettingsEntry(std::span<const uint8_t> payload);
+
+  void readMavlinkTelemetry(std::span<const uint8_t> payload);
+
+  void read(const Header& header, std::span<const uint8_t> payload);
 
 public:
-  uint16_t channels[CHANNEL_COUNT];
+  ChannelsPacked channels;
 
-  Queue tx_queue;
+  TransmitQueue tx_queue;
 
   LinkStatistics link_stats{0};
 
@@ -133,15 +129,79 @@ public:
 
   std::function<void(std::span<const uint8_t>)> on_mavlink_telemetry;
 
-  OneWire(HardwareSerial& serial) : _serial{serial} {
-    for (uint8_t i = 0; i < CHANNEL_COUNT; i++) {
-      channels[i] = CHANNEL_VALUE_MIN;
-    }
-    channels[CHANNEL_THROTTLE] = CHANNEL_VALUE_MID;
+  explicit Transmitter(HardwareSerial& serial) : _serial{serial} {
+    // nothing
   }
 
-  void begin(int8_t rx_pin = -1, int8_t tx_pin = -1) noexcept;
+  void begin(int8_t rx_pin = -1, int8_t tx_pin = -1);
 
-  void tick() noexcept;
+  IRAM_ATTR void tick();
 };
+
+// template <typename T>
+// concept PhysicalLayer = requires(T t) {
+//   { t.readAllBytes() } -> std::same_as<std::span<const uint8_t>>;
+
+//   { t.writable() } -> std::same_as<bool>;
+
+//   { t.write(std::span<const uint8_t>{}) } -> std::same_as<void>;
+// };
+
+// class ArduinoPhysicalLayer {
+// private:
+//   HardwareSerial& _serial;
+
+//   uint8_t _read_buffer[256];
+
+// public:
+//   ArduinoPhysicalLayer(HardwareSerial& serial) : _serial{serial} {
+//     // empty
+//   }
+
+//   void begin(int8_t rx_pin = -1, int8_t tx_pin = -1) {
+//     pinMode(rx_pin, INPUT_PULLUP);
+//     pinMode(tx_pin, OUTPUT);
+//     _serial.setTxBufferSize(0);
+//     _serial.begin(BAUD, SERIAL_8N1, rx_pin, tx_pin);
+//   }
+
+//   inline std::span<const uint8_t> readAllBytes() {
+//     auto available = _serial.available();
+//     if (available) {
+//       _serial.readBytes(_read_buffer, available);
+//       return {STD_SPAN_ARGS(_read_buffer, available)};
+//     } else {
+//       return {};
+//     }
+//   }
+
+//   inline bool writable() {
+//     return true;
+//   }
+
+//   inline void write(std::span<const uint8_t> bytes) {
+//     _serial.write(bytes.data(), bytes.size());
+//   }
+// };
+
+// static_assert(PhysicalLayer<ArduinoPhysicalLayer>);
+
+// class ArduinoOneWirePhysicalLayer : public ArduinoPhysicalLayer {
+// private:
+//   uint32_t _tx_timeframe = 0;
+
+// public:
+//   inline bool writable() {
+//     if (micros() > _tx_timeframe) {
+//       return true;
+//     }
+//   }
+
+//   inline void write(std::span<const uint8_t> bytes) {
+//     ArduinoPhysicalLayer::write(bytes);
+//     _tx_timeframe = micros() + FRAME_TIME_US + 111;
+//   }
+// };
+
+// static_assert(PhysicalLayer<ArduinoOneWirePhysicalLayer>);
 }; // namespace crsf

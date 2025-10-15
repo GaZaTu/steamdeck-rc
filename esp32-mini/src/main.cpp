@@ -19,7 +19,7 @@ public:
   }
 };
 
-static crsf::OneWire crsf_serial{Serial0};
+static crsf::Transmitter crsf_serial{Serial0};
 
 static rc::GamepadEvent gamepad_event;
 static rc::RemoteEvent remote_event;
@@ -34,7 +34,7 @@ static uint8_t arming = 0;
 void setup() {
   Serial.begin(SERIAL_BAUD);
 
-  setBoardLED({255, 0, 0});
+  led0Write({255, 0, 0});
   delay(1000);
 
   crsf_serial.begin(1, 2);
@@ -47,7 +47,7 @@ void setup() {
     }
   };
 
-  setBoardLED({0, 255, 0});
+  led0Write({0, 255, 0});
 }
 
 void loop() {
@@ -79,7 +79,9 @@ void loop() {
       case rc::PARAM_MODEL_MATCH:
       case rc::PARAM_MAX_POWER:
       case rc::PARAM_WIFI:
-        crsf_serial.tx_queue.push_parameter_write(gamepad_event.set_parameter.parameter, (uint8_t)gamepad_event.set_parameter.value);
+        if (!armed) {
+          crsf_serial.tx_queue.push_parameter_write(gamepad_event.set_parameter.parameter, (uint8_t)gamepad_event.set_parameter.value);
+        }
         break;
       }
       break;
@@ -93,7 +95,7 @@ void loop() {
         arming += gamepad_event.button_down.button;
         if (arming == (rc::SDL_GAMEPAD_BUTTON_LEFT_STICK + rc::SDL_GAMEPAD_BUTTON_RIGHT_STICK + rc::SDL_GAMEPAD_BUTTON_LEFT_SHOULDER + rc::SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER)) {
           armed = !armed;
-          crsf_serial.channels[crsf::CHANNEL_AUX1] = armed ? crsf::CHANNEL_VALUE_MAX : crsf::CHANNEL_VALUE_MIN;
+          crsf_serial.channels.aux1 = armed ? crsf::CHANNEL_VALUE_MAX : crsf::CHANNEL_VALUE_MIN;
 
           remote_event.type = rc::RemoteEvent::RC_EVENT_REPORT_ARMED;
           remote_event.report_armed.armed = armed;
@@ -116,24 +118,24 @@ void loop() {
 
     case rc::GamepadEvent::SDL_EVENT_GAMEPAD_AXIS_MOTION: {
       axis_positions[gamepad_event.axis_motion.axis] = gamepad_event.axis_motion.value;
-      setBoardLED({
-          constrain((uint8_t)map(axis_positions[0], INT16_MIN, INT16_MAX, 0, 255), (uint8_t)0, (uint8_t)255),
-          constrain((uint8_t)map(axis_positions[1], INT16_MIN, INT16_MAX, 0, 255), (uint8_t)0, (uint8_t)255),
+      led0Write({
+          constrain((uint8_t)map(axis_positions[0], INT16_MIN, INT16_MAX, 0, UINT8_MAX), (uint8_t)0, (uint8_t)UINT8_MAX),
+          constrain((uint8_t)map(axis_positions[1], INT16_MIN, INT16_MAX, 0, UINT8_MAX), (uint8_t)0, (uint8_t)UINT8_MAX),
           0,
       });
       auto value = map(gamepad_event.axis_motion.value, INT16_MIN, INT16_MAX, crsf::CHANNEL_VALUE_MIN, crsf::CHANNEL_VALUE_MAX);
       switch (gamepad_event.axis_motion.axis) {
       case rc::SDL_GAMEPAD_AXIS_LEFTX:
-        crsf_serial.channels[crsf::CHANNEL_RUDDER] = value;
+        crsf_serial.channels.rudder = value;
         break;
       case rc::SDL_GAMEPAD_AXIS_LEFTY:
-        crsf_serial.channels[crsf::CHANNEL_THROTTLE] = value;
+        crsf_serial.channels.throttle = value;
         break;
       case rc::SDL_GAMEPAD_AXIS_RIGHTX:
-        crsf_serial.channels[crsf::CHANNEL_AILERON] = value;
+        crsf_serial.channels.aileron = value;
         break;
       case rc::SDL_GAMEPAD_AXIS_RIGHTY:
-        crsf_serial.channels[crsf::CHANNEL_ELEVATOR] = value;
+        crsf_serial.channels.elevator = value;
         break;
       }
     } break;
