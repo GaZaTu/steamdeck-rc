@@ -4,6 +4,7 @@
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -319,7 +320,7 @@ struct RCConfig {
 };
 
 constexpr auto SDL_GAMEPAD_MIN_DIFF = 256;
-constexpr auto SDL_GAMEPAD_DEADZONE = 2048;
+constexpr auto SDL_GAMEPAD_DEADZONE = 8192;
 
 int main(int argc, char** argv) {
   RCConfig config;
@@ -351,6 +352,8 @@ int main(int argc, char** argv) {
   SDL_Event event;
 
   int16_t axis_positions[rc::SDL_GAMEPAD_AXIS_COUNT] = {0};
+
+  BasicTimer channel_timer{std::chrono::milliseconds{4}};
 
   bool running = true;
   while (running) {
@@ -423,17 +426,33 @@ int main(int argc, char** argv) {
       case SDL_EVENT_GAMEPAD_AXIS_MOTION:
         if (std::abs(event.gaxis.value) < SDL_GAMEPAD_DEADZONE) {
           event.gaxis.value = 0;
+        } else {
+          if (event.gaxis.value > 0) {
+            event.gaxis.value -= SDL_GAMEPAD_DEADZONE;
+          } else {
+            event.gaxis.value += SDL_GAMEPAD_DEADZONE;
+          }
         }
-        if (std::abs(std::abs(event.gaxis.value) - std::abs(axis_positions[event.gaxis.axis])) > SDL_GAMEPAD_MIN_DIFF) {
-          axis_positions[event.gaxis.axis] = event.gaxis.value;
-          // printf("SDL_EVENT_GAMEPAD_AXIS_MOTION: %d, %d\n", event.gaxis.axis, event.gaxis.value);
-          // video.setText(std::format("axis{}", event.gaxis.axis), {std::format("axis{}: {}", event.gaxis.axis, event.gaxis.value), "w-tw-8", std::format("h-{}", 32 * (event.gaxis.axis + 2))});
-          gamepad_event.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
-          gamepad_event.axis_motion.axis = event.gaxis.axis;
-          gamepad_event.axis_motion.value = event.gaxis.value;
-          brain.write(gamepad_event);
-        }
+        axis_positions[event.gaxis.axis] = event.gaxis.value;
+        // if (std::abs(std::abs(event.gaxis.value) - std::abs(axis_positions[event.gaxis.axis])) > SDL_GAMEPAD_MIN_DIFF) {
+        //   axis_positions[event.gaxis.axis] = event.gaxis.value;
+        //   // printf("SDL_EVENT_GAMEPAD_AXIS_MOTION: %d, %d\n", event.gaxis.axis, event.gaxis.value);
+        //   // video.setText(std::format("axis{}", event.gaxis.axis), {std::format("axis{}: {}", event.gaxis.axis, event.gaxis.value), "w-tw-8", std::format("h-{}", 32 * (event.gaxis.axis + 2))});
+        //   gamepad_event.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
+        //   gamepad_event.axis_motion.axis = event.gaxis.axis;
+        //   gamepad_event.axis_motion.value = event.gaxis.value;
+        //   brain.write(gamepad_event);
+        // }
         break;
+      }
+    }
+
+    if (channel_timer.resetIfTicked()) {
+      for (int i = 0; i < 4; i++) {
+        gamepad_event.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
+        gamepad_event.axis_motion.axis = i;
+        gamepad_event.axis_motion.value = axis_positions[i];
+        brain.write(gamepad_event);
       }
     }
 

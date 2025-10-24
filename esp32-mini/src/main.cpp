@@ -123,19 +123,18 @@ void loop() {
           constrain((uint8_t)map(axis_positions[1], INT16_MIN, INT16_MAX, 0, UINT8_MAX), (uint8_t)0, (uint8_t)UINT8_MAX),
           0,
       });
-      auto value = map(gamepad_event.axis_motion.value, INT16_MIN, INT16_MAX, crsf::CHANNEL_VALUE_MIN, crsf::CHANNEL_VALUE_MAX);
       switch (gamepad_event.axis_motion.axis) {
       case rc::SDL_GAMEPAD_AXIS_LEFTX:
-        crsf_serial.channels.rudder = value;
+        crsf_serial.channels.rudder = map(gamepad_event.axis_motion.value, INT16_MIN, INT16_MAX, crsf::CHANNEL_VALUE_MIN, crsf::CHANNEL_VALUE_MAX);
         break;
       case rc::SDL_GAMEPAD_AXIS_LEFTY:
-        crsf_serial.channels.throttle = value;
+        crsf_serial.channels.throttle = map(std::max<int16_t>(gamepad_event.axis_motion.value * -1, 0), 0, INT16_MAX, crsf::CHANNEL_VALUE_MIN, crsf::CHANNEL_VALUE_MAX);
         break;
       case rc::SDL_GAMEPAD_AXIS_RIGHTX:
-        crsf_serial.channels.aileron = value;
+        crsf_serial.channels.aileron = map(gamepad_event.axis_motion.value, INT16_MIN, INT16_MAX, crsf::CHANNEL_VALUE_MIN, crsf::CHANNEL_VALUE_MAX);
         break;
       case rc::SDL_GAMEPAD_AXIS_RIGHTY:
-        crsf_serial.channels.elevator = value;
+        crsf_serial.channels.elevator = map(gamepad_event.axis_motion.value * -1, INT16_MIN, INT16_MAX, crsf::CHANNEL_VALUE_MIN, crsf::CHANNEL_VALUE_MAX);
         break;
       }
     } break;
