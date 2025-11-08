@@ -29,7 +29,6 @@ static int16_t axis_positions[rc::SDL_GAMEPAD_AXIS_COUNT] = {0};
 static BasicTimer report_timer{500};
 
 static bool armed = false;
-static uint8_t arming = 0;
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
@@ -88,12 +87,8 @@ void loop() {
 
     case rc::GamepadEvent::SDL_EVENT_GAMEPAD_BUTTON_DOWN:
       switch (gamepad_event.button_down.button) {
-      case rc::SDL_GAMEPAD_BUTTON_LEFT_STICK:
-      case rc::SDL_GAMEPAD_BUTTON_RIGHT_STICK:
-      case rc::SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
-      case rc::SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
-        arming += gamepad_event.button_down.button;
-        if (arming == (rc::SDL_GAMEPAD_BUTTON_LEFT_STICK + rc::SDL_GAMEPAD_BUTTON_RIGHT_STICK + rc::SDL_GAMEPAD_BUTTON_LEFT_SHOULDER + rc::SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER)) {
+      case rc::SDL_GAMEPAD_BUTTON_WEST:
+        if (axis_positions[rc::SDL_GAMEPAD_AXIS_LEFTY] < -32000) {
           armed = !armed;
           crsf_serial.channels.aux1 = armed ? crsf::CHANNEL_VALUE_MAX : crsf::CHANNEL_VALUE_MIN;
 
@@ -101,17 +96,6 @@ void loop() {
           remote_event.report_armed.armed = armed;
           RCGamepad::write(remote_event);
         }
-        break;
-      }
-      break;
-
-    case rc::GamepadEvent::SDL_EVENT_GAMEPAD_BUTTON_UP:
-      switch (gamepad_event.button_down.button) {
-      case rc::SDL_GAMEPAD_BUTTON_LEFT_STICK:
-      case rc::SDL_GAMEPAD_BUTTON_RIGHT_STICK:
-      case rc::SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
-      case rc::SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
-        arming -= gamepad_event.button_down.button;
         break;
       }
       break;

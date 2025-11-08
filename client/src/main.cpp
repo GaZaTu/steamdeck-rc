@@ -122,7 +122,7 @@ struct RCOverlayText {
   std::string x;
   std::string y;
   std::string fontcolor = "white";
-  std::string fontsize = "22";
+  std::string fontsize = "12";
   std::string more = "";
 
   std::string to_string() {
@@ -171,6 +171,7 @@ public:
 
     mpv_set_property_string(_mpv, "profile", "low-latency");
     mpv_set_property_string(_mpv, "untimed", "");
+    mpv_set_property_string(_mpv, "autofit", "1080x720");
 
     mpv_initialize(_mpv);
 
@@ -336,7 +337,7 @@ int main(int argc, char** argv) {
     printf("opened video device at %s\n", config.video_device.data());
   }
 
-  video.setText("time", {"%{localtime}", "16", "h-th-16", "white", "14"});
+  video.setText("time", {"%{localtime}", "16", "h-th-16", "white", "8"});
   video.setText("vrx_rssi", {"vrx_rssi: 0", "480", "h-th-16"});
 
   if (!initializeSDL()) {
@@ -462,10 +463,13 @@ int main(int argc, char** argv) {
       case rc::RemoteEvent::RC_EVENT_REPORT_LINK_STATS: {
         auto& l = remote_event.report_link_stats;
         video.setText("link_stats", {
-          std::format("rssi[up]: {}\n lqi[up]: {}\n snr[up]: {}\nrate[up]: {}\npowr[up]: {}\nrssi[dn]: {}\n lqi[dn]: {}\n snr[dn]: {}",
+          // std::format("rssi[up]: {}\n lqi[up]: {}\n snr[up]: {}\nrate[up]: {}\npowr[up]: {}\nrssi[dn]: {}\n lqi[dn]: {}\n snr[dn]: {}",
+          //   (l.up_rssi_ant1 + l.up_rssi_ant2) / 2, l.up_link_quality, l.up_snr, l.rf_profile, l.up_rf_power, l.down_rssi, l.down_link_quality, l.down_snr
+          // ),
+          std::format("rssi[up]: {}\n lqi[up]: {}\n snr[up]: {}\nrssi[dn]: {}\n lqi[dn]: {}\n snr[dn]: {}",
             (l.up_rssi_ant1 + l.up_rssi_ant2) / 2, l.up_link_quality, l.up_snr, l.rf_profile, l.up_rf_power, l.down_rssi, l.down_link_quality, l.down_snr
           ),
-          "w-240", "h-th-16"
+          "w-th-16", "h-th-16"
         });
         // printf("stat: rssi1=-%ddBm rssi2=-%ddBm lqi=%d%% snr=%ddB ant=%d rate=%dhz power=%dmW d_rssi=-%ddBm d_lqi=%d%% d_snr=%ddB\n", l.up_rssi_ant1, l.up_rssi_ant2, l.up_link_quality, l.up_snr, l.active_antenna, l.rf_profile, l.up_rf_power, l.down_rssi, l.down_link_quality, l.down_snr);
       } break;
