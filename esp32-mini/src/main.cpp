@@ -88,7 +88,7 @@ void loop() {
     case rc::GamepadEvent::SDL_EVENT_GAMEPAD_BUTTON_DOWN:
       switch (gamepad_event.button_down.button) {
       case rc::SDL_GAMEPAD_BUTTON_WEST:
-        if (axis_positions[rc::SDL_GAMEPAD_AXIS_LEFTY] < -32000) {
+        if (axis_positions[rc::SDL_GAMEPAD_AXIS_LEFTY] > 24000) {
           armed = !armed;
           crsf_serial.channels.aux1 = armed ? crsf::CHANNEL_VALUE_MAX : crsf::CHANNEL_VALUE_MIN;
 
